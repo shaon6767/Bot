@@ -53,18 +53,26 @@ export async function handleIncomingMessage(
 
   const adapter =
     msg.channel === "instagram" ? instagramAdapter : messengerAdapter;
-  await adapter.sendMessage(
-    business.pageAccessToken,
-    msg.senderId,
-    result.replyText,
-  );
 
-  await Message.create({
-    businessId: business._id,
-    channel: msg.channel,
-    customerId: msg.senderId,
-    metaMessageId: `bot-${msg.metaMessageId}`,
-    sender: "bot",
-    text: result.replyText,
-  });
+  try {
+    await adapter.sendMessage(
+      business.pageAccessToken,
+      msg.senderId,
+      result.replyText,
+    );
+
+    await Message.create({
+      businessId: business._id,
+      channel: msg.channel,
+      customerId: msg.senderId,
+      metaMessageId: `bot-${msg.metaMessageId}`,
+      sender: "bot",
+      text: result.replyText,
+    });
+  } catch (err) {
+    logger.error(
+      `Reply delivery failed for business ${business._id}, customer ${msg.senderId}. Order/message state was already saved — customer did not receive a reply.`,
+      err,
+    );
+  }
 }

@@ -20,12 +20,6 @@ export async function updateOrderStatus(
   res: Response,
 ): Promise<void> {
   const { status } = req.body;
-  const validStatuses = ["new", "confirmed", "shipped", "cancelled"];
-
-  if (!validStatuses.includes(status)) {
-    res.status(400).json({ message: "Invalid status" });
-    return;
-  }
 
   const order = await Order.findOneAndUpdate(
     { _id: req.params.id, businessId: req.businessId },

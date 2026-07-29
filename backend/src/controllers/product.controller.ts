@@ -17,12 +17,6 @@ export async function createProduct(
   res: Response,
 ): Promise<void> {
   const { name, price } = req.body;
-
-  if (!name || price === undefined) {
-    res.status(400).json({ message: "Name and price are required" });
-    return;
-  }
-
   const product = await Product.create({
     businessId: req.businessId,
     name,
@@ -43,7 +37,7 @@ export async function updateProduct(
       ...(name !== undefined && { name }),
       ...(price !== undefined && { price }),
     },
-    { new: true },
+    { new: true, runValidators: true },
   );
 
   if (!product) {

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
+import { AuthRequest } from "../middleware/auth.middleware";
 import { Business } from "../models/Business";
 
 function setAuthCookie(res: Response, businessId: string): void {
@@ -17,12 +18,7 @@ function setAuthCookie(res: Response, businessId: string): void {
 export async function register(req: Request, res: Response): Promise<void> {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    res.status(400).json({ message: "Name, email, and password are required" });
-    return;
-  }
-
-  const existing = await Business.findOne({ email: email.toLowerCase() });
+  const existing = await Business.findOne({ email });
   if (existing) {
     res
       .status(400)
@@ -31,25 +27,28 @@ export async function register(req: Request, res: Response): Promise<void> {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const business = await Business.create({ name, email, passwordHash });
 
-  setAuthCookie(res, business._id.toString());
-  res
-    .status(201)
-    .json({ id: business._id, name: business.name, email: business.email });
+  try {
+    const business = await Business.create({ name, email, passwordHash });
+    setAuthCookie(res, business._id.toString());
+    res
+      .status(201)
+      .json({ id: business._id, name: business.name, email: business.email });
+  } catch (err: any) {
+    if (err.code === 11000) {
+      res
+        .status(400)
+        .json({ message: "An account with this email already exists" });
+      return;
+    }
+    throw err;
+  }
 }
 
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    res.status(400).json({ message: "Email and password are required" });
-    return;
-  }
-
-  const business = await Business.findOne({
-    email: email.toLowerCase(),
-  }).select("+passwordHash");
+  const business = await Business.findOne({ email }).select("+passwordHash");
   if (!business) {
     res.status(401).json({ message: "Invalid email or password" });
     return;
@@ -68,4 +67,13 @@ export async function login(req: Request, res: Response): Promise<void> {
 export function logout(req: Request, res: Response): void {
   res.clearCookie("token");
   res.status(204).send();
+}
+
+export async function getMe(req: AuthRequest, res: Response): Promise<void> {
+  const business = await Business.findById(req.businessId);
+  if (!business) {
+    res.status(404).json({ message: "Business not found" });
+    return;
+  }
+  res.json({ id: business._id, name: business.name, email: business.email });
 }
