@@ -1,6 +1,6 @@
 import { Response } from "express";
-import { AuthRequest } from "../middleware/auth.middleware";
-import { Order } from "../models/Order";
+import { AuthRequest } from "../middleware/auth.middleware.js";
+import { Order } from "../models/Order.js";
 
 export async function getOrders(
   req: AuthRequest,

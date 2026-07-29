@@ -1,5 +1,5 @@
-import { IncomingMessage } from "../types";
-import { ChannelAdapter } from "./channelAdapter";
+import { IncomingMessage } from "../types/index.js";
+import { ChannelAdapter } from "./channelAdapter.js";
 
 const GRAPH_API_URL = "https://graph.facebook.com/v21.0/me/messages";
 

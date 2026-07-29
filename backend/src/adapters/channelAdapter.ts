@@ -1,4 +1,4 @@
-import { IncomingMessage } from "../types";
+import { IncomingMessage } from "../types/index.js";
 
 export interface ChannelAdapter {
   channel: "messenger" | "instagram";

@@ -1,6 +1,6 @@
-import { env } from "../config/env";
-import { IProduct } from "../models/Product";
-import { logger } from "../utils/logger";
+import { env } from "../config/env.js";
+import { IProduct } from "../models/Product.js";
+import { logger } from "../utils/logger.js";
 
 const GEMINI_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";

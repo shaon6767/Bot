@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
-import { IOrder, Order } from "../models/Order";
-import { ParsedOrderItem } from "./reply.service";
+import { IOrder, Order } from "../models/Order.js";
+import { ParsedOrderItem } from "./reply.service.js";
 
 export async function createOrder(
   businessId: Types.ObjectId,

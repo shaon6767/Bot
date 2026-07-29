@@ -1,14 +1,14 @@
 import { Document } from "mongoose";
-import { instagramAdapter } from "../adapters/instagramAdapter";
-import { messengerAdapter } from "../adapters/messengerAdapter";
-import { Business, IBusiness } from "../models/Business";
-import { Message } from "../models/Message";
-import { Product } from "../models/Product";
-import { IncomingMessage } from "../types";
-import { logger } from "../utils/logger";
-import { generateSmartReply } from "./llm.service";
-import { createOrder } from "./order.service";
-import { processMessage } from "./reply.service";
+import { instagramAdapter } from "../adapters/instagramAdapter.js";
+import { messengerAdapter } from "../adapters/messengerAdapter.js";
+import { Business, IBusiness } from "../models/Business.js";
+import { Message } from "../models/Message.js";
+import { Product } from "../models/Product.js";
+import { IncomingMessage } from "../types/index.js";
+import { logger } from "../utils/logger.js";
+import { generateSmartReply } from "./llm.service.js";
+import { createOrder } from "./order.service.js";
+import { processMessage } from "./reply.service.js";
 
 const WAITING_MESSAGE = "Let me check on that for you, one moment...";
 const LLM_FALLBACK_MESSAGE =

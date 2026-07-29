@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
-import { instagramAdapter } from "../adapters/instagramAdapter";
-import { messengerAdapter } from "../adapters/messengerAdapter";
-import { env } from "../config/env";
-import { MetaWebhookRequest } from "../middleware/verifyMetaSignature";
-import { handleIncomingMessage } from "../services/conversation.service";
-import { logger } from "../utils/logger";
+import { instagramAdapter } from "../adapters/instagramAdapter.js";
+import { messengerAdapter } from "../adapters/messengerAdapter.js";
+import { env } from "../config/env.js";
+import { MetaWebhookRequest } from "../middleware/verifyMetaSignature.js";
+import { handleIncomingMessage } from "../services/conversation.service.js";
+import { logger } from "../utils/logger.js";
 
 export function handleWebhookGet(req: Request, res: Response): void {
   const mode = req.query["hub.mode"];

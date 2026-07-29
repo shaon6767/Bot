@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextFunction, Request, Response } from "express";
-import { env } from "../config/env";
+import { env } from "../config/env.js";
 export interface MetaWebhookRequest extends Request {
   parsedBody?: any;
 }

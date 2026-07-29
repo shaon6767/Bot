@@ -4,13 +4,13 @@ import {
     deleteProduct,
     getProducts,
     updateProduct,
-} from "../controllers/product.controller";
-import { requireAuth } from "../middleware/auth.middleware";
-import { validate } from "../middleware/validate";
+} from "../controllers/product.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { validate } from "../middleware/validate.js";
 import {
     createProductSchema,
     updateProductSchema,
-} from "../schemas/product.schema";
+} from "../schemas/product.schema.js";
 
 const router = Router();
 

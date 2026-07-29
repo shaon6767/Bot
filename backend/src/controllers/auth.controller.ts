@@ -1,9 +1,9 @@
 import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env";
-import { AuthRequest } from "../middleware/auth.middleware";
-import { Business } from "../models/Business";
+import { env } from "../config/env.js";
+import { AuthRequest } from "../middleware/auth.middleware.js";
+import { Business } from "../models/Business.js";
 
 function setAuthCookie(res: Response, businessId: string): void {
   const token = jwt.sign({ businessId }, env.jwtSecret, { expiresIn: "7d" });

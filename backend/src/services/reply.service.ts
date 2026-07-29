@@ -1,4 +1,4 @@
-import { IProduct } from "../models/Product";
+import { IProduct } from "../models/Product.js";
 
 export interface ParsedOrderItem {
   product: IProduct;
