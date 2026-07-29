@@ -17,9 +17,6 @@ export const env = {
   jwtSecret: required("JWT_SECRET"),
   metaAppSecret: required("META_APP_SECRET"),
   metaVerifyToken: required("META_VERIFY_TOKEN"),
-  cloudinary: {
-    cloudName: required("CLOUDINARY_CLOUD_NAME"),
-    apiKey: required("CLOUDINARY_API_KEY"),
-    apiSecret: required("CLOUDINARY_API_SECRET"),
-  },
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  grokApiKey: process.env.GROK_API_KEY,
 };

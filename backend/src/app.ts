@@ -3,12 +3,12 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-import { env } from "./config/env";
-import { errorHandler } from "./middleware/errorHandler";
-import authRoutes from "./routes/auth.routes";
-import orderRoutes from "./routes/order.routes";
-import productRoutes from "./routes/product.routes";
-import webhookRoutes from "./webhooks/webhook.routes";
+import { env } from "./config/env.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import authRoutes from "./routes/auth.routes.js";
+import orderRoutes from "./routes/order.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import webhookRoutes from "./webhooks/webhook.routes.js";
 
 const app = express();
 
