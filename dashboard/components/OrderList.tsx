@@ -40,7 +40,7 @@ export function OrderList() {
                   status: e.target.value as Order["status"],
                 })
               }
-              className="border rounded px-2 py-1 text-sm"
+              className="border rounded-lg px-2 py-1 text-sm"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
