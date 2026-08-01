@@ -7,10 +7,12 @@ import { Business } from "../models/Business.js";
 
 function setAuthCookie(res: Response, businessId: string): void {
   const token = jwt.sign({ businessId }, env.jwtSecret, { expiresIn: "7d" });
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.cookie("token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
