@@ -8,11 +8,13 @@ import { IncomingMessage } from "../types/index.js";
 import { logger } from "../utils/logger.js";
 import { generateSmartReply } from "./llm.service.js";
 import { createOrder } from "./order.service.js";
-import { processMessage } from "./reply.service.js";
+import { isLikelyOffTopic, processMessage } from "./reply.service.js";
 
 const WAITING_MESSAGE = "Let me check on that for you, one moment...";
 const LLM_FALLBACK_MESSAGE =
   "Thanks for your message! We'll get back to you shortly.";
+const OFF_TOPIC_MESSAGE =
+  "Ask me anything about our products or your order, and I'll help! 🙂";
 
 type Adapter = typeof messengerAdapter | typeof instagramAdapter;
 
@@ -38,7 +40,7 @@ export async function handleIncomingMessage(
       text: msg.text,
     });
   } catch (err: any) {
-    if (err.code === 11000) return; // duplicate webhook delivery, already handled
+    if (err.code === 11000) return;
     throw err;
   }
 
@@ -66,6 +68,11 @@ export async function handleIncomingMessage(
     return;
   }
 
+  if (isLikelyOffTopic(msg.text)) {
+    await sendAndLog(adapter, business, msg, OFF_TOPIC_MESSAGE, "off-topic");
+    return; // never touches the LLM — no waiting message either, nothing to wait for
+  }
+
   const waitingSent = await sendAndLog(
     adapter,
     business,
@@ -73,7 +80,7 @@ export async function handleIncomingMessage(
     WAITING_MESSAGE,
     "waiting",
   );
-  if (!waitingSent) return; // sending already failing — page token is likely broken, don't bother calling the LLM
+  if (!waitingSent) return;
 
   const smartReply = await generateSmartReply(msg.text, products);
   await sendAndLog(

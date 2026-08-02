@@ -19,6 +19,49 @@ function hasWord(normalized: string, words: string[]): boolean {
   return words.some((w) => tokens.includes(w));
 }
 
+const OFF_TOPIC_PATTERNS = [
+  // Bot/AI identity — never let this reach the model
+  /\bwho (are|r) (you|u)\b/i,
+  /\bwhat are you\b/i,
+  /\bare you (an? )?(ai|bot|robot|human|real)\b/i,
+  /\bwhich (ai|model|llm)\b/i,
+  /\b(chatgpt|openai|gemini|grok|claude|anthropic)\b/i,
+  /\bwho (made|built|created|trained|owns) (you|this bot|this app|it)\b/i,
+
+  // Prompt injection / jailbreak attempts
+  /\bignore (all )?(previous|above|prior) (instructions|messages|prompt)\b/i,
+  /\bsystem prompt\b/i,
+  /\byou are now\b/i,
+  /\back as\b/i,
+  /\bpretend (you are|to be)\b/i,
+  /\bforget (your|all) (instructions|rules)\b/i,
+
+  // Generic off-topic requests
+  /\btell me a joke\b/i,
+  /\bwrite (me )?a (poem|song|story|essay)\b/i,
+  /\bwhat('s| is) the weather\b/i,
+  /\btranslate this\b/i,
+  /\bwho is the (prime minister|president)\b/i,
+  /\bwhat('s| is) the capital of\b/i,
+  /\bsolve (this|the) (equation|problem)\b/i,
+];
+
+function looksLikeSpamOrJunk(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return true;
+  if (trimmed.length > 500) return true;
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  if (/^(.)\1{6,}$/.test(trimmed.replace(/\s/g, ""))) return true;
+  if (!/[a-zA-Z\u0980-\u09FF0-9]/.test(trimmed)) return true; // no letters/digits at all — \u0980-\u09FF covers Bangla script
+  return false;
+}
+
+// Runs BEFORE the LLM is ever called — catches obvious junk cheaply so it never burns LLM quota
+export function isLikelyOffTopic(text: string): boolean {
+  if (looksLikeSpamOrJunk(text)) return true;
+  return OFF_TOPIC_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 export function processMessage(
   text: string,
   products: IProduct[],
