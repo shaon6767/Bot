@@ -1,10 +1,10 @@
-import { ChannelAdapter } from './channelAdapter.js';
-import { IncomingMessage } from '../types/index.js';
+import { IncomingMessage } from "../types/index.js";
+import { ChannelAdapter } from "./channelAdapter.js";
 
-const GRAPH_API_URL = 'https://graph.facebook.com/v21.0/me/messages';
+const GRAPH_API_URL = "https://graph.facebook.com/v25.0/me/messages";
 
 export const instagramAdapter: ChannelAdapter = {
-  channel: 'instagram',
+  channel: "instagram",
 
   parseEntry(entry: any): IncomingMessage[] {
     const messages: IncomingMessage[] = [];
@@ -14,10 +14,10 @@ export const instagramAdapter: ChannelAdapter = {
       if (!event.message || event.message.is_echo) continue;
 
       messages.push({
-        channel: 'instagram',
+        channel: "instagram",
         senderId: event.sender.id,
         pageId,
-        text: event.message.text ?? '',
+        text: event.message.text ?? "",
         metaMessageId: event.message.mid,
         timestamp: event.timestamp,
       });
@@ -26,15 +26,22 @@ export const instagramAdapter: ChannelAdapter = {
     return messages;
   },
 
-  async sendMessage(pageAccessToken: string, recipientId: string, text: string): Promise<void> {
-    const response = await fetch(`${GRAPH_API_URL}?access_token=${pageAccessToken}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipient: { id: recipientId },
-        message: { text },
-      }),
-    });
+  async sendMessage(
+    pageAccessToken: string,
+    recipientId: string,
+    text: string,
+  ): Promise<void> {
+    const response = await fetch(
+      `${GRAPH_API_URL}?access_token=${pageAccessToken}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipient: { id: recipientId },
+          message: { text },
+        }),
+      },
+    );
 
     if (!response.ok) {
       const errorBody = await response.text();

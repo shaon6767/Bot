@@ -8,8 +8,8 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/auth.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import productRoutes from "./routes/product.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
 import webhookRoutes from "./webhooks/webhook.routes.js";
-
 const app = express();
 
 app.use(helmet());
@@ -24,6 +24,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.use(errorHandler);
 

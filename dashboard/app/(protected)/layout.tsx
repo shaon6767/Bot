@@ -46,6 +46,9 @@ export default function ProtectedLayout({
           <a href="/orders" className="text-sm font-medium">
             Orders
           </a>
+          <a href="/settings" className="text-sm font-medium">
+            Settings
+          </a>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-gray-500">{business?.name}</span>
