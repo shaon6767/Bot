@@ -8,6 +8,8 @@ export interface IBusiness extends Document {
   pageAccessToken?: string;
   pageId?: string;
   instagramAccountId?: string;
+  resetTokenHash?: string;
+  resetTokenExpiry?: Date;
   createdAt: Date;
 }
 
@@ -25,6 +27,8 @@ const businessSchema = new Schema<IBusiness>(
     pageAccessToken: { type: String, select: false },
     pageId: { type: String },
     instagramAccountId: { type: String },
+    resetTokenHash: { type: String, select: false },
+    resetTokenExpiry: { type: Date, select: false },
   },
   { timestamps: true },
 );

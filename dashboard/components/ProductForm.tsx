@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/Toast";
 import { useCreateProduct } from "@/hooks/useProducts";
 import { useState } from "react";
 
@@ -7,6 +8,7 @@ export function ProductForm() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const { mutate, isPending, error } = useCreateProduct();
+  const toast = useToast();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -14,9 +16,11 @@ export function ProductForm() {
       { name, price: parseFloat(price) },
       {
         onSuccess: () => {
+          toast.success("Product added");
           setName("");
           setPrice("");
         },
+        onError: () => toast.error("Failed to add product"),
       },
     );
   }

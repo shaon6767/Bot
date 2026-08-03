@@ -1,9 +1,11 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { AuthRequest } from "../middleware/auth.middleware.js";
 import { Business } from "../models/Business.js";
+import { sendPasswordResetEmail } from "../services/email.service.js";
 
 function setAuthCookie(res: Response, businessId: string): void {
   const token = jwt.sign({ businessId }, env.jwtSecret, { expiresIn: "7d" });
@@ -78,4 +80,63 @@ export async function getMe(req: AuthRequest, res: Response): Promise<void> {
     return;
   }
   res.json({ id: business._id, name: business.name, email: business.email });
+}
+
+export async function forgotPassword(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { email } = req.body;
+
+  const business = await Business.findOne({ email });
+
+  // Always respond the same way whether or not the email exists —
+  // otherwise this endpoint becomes a way to check who's registered.
+  const genericResponse = {
+    message: "If an account exists for that email, a reset link has been sent.",
+  };
+
+  if (!business) {
+    res.json(genericResponse);
+    return;
+  }
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  business.resetTokenHash = tokenHash;
+  business.resetTokenExpiry = expiry;
+  await business.save();
+
+  const resetLink = `${env.clientUrl}/reset-password/${rawToken}`;
+  await sendPasswordResetEmail(business.email, resetLink);
+
+  res.json(genericResponse);
+}
+
+export async function resetPassword(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { token, password } = req.body;
+
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const business = await Business.findOne({
+    resetTokenHash: tokenHash,
+    resetTokenExpiry: { $gt: new Date() },
+  }).select("+resetTokenHash +resetTokenExpiry");
+
+  if (!business) {
+    res.status(400).json({ message: "Invalid or expired reset link" });
+    return;
+  }
+
+  business.passwordHash = await bcrypt.hash(password, 10);
+  business.resetTokenHash = undefined;
+  business.resetTokenExpiry = undefined;
+  await business.save();
+
+  res.json({ message: "Password updated. You can now log in." });
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/Toast";
 import type { Order } from "@/hooks/useOrders";
 import { useOrders, useUpdateOrderStatus } from "@/hooks/useOrders";
 
@@ -13,6 +14,7 @@ const STATUSES: Order["status"][] = [
 export function OrderList() {
   const { data: orders, isLoading } = useOrders();
   const { mutate: updateStatus } = useUpdateOrderStatus();
+  const toast = useToast();
 
   if (isLoading)
     return <p className="text-sm text-gray-500">Loading orders...</p>;
@@ -35,10 +37,16 @@ export function OrderList() {
             <select
               value={order.status}
               onChange={(e) =>
-                updateStatus({
-                  id: order._id,
-                  status: e.target.value as Order["status"],
-                })
+                updateStatus(
+                  {
+                    id: order._id,
+                    status: e.target.value as Order["status"],
+                  },
+                  {
+                    onSuccess: () => toast.success("Order status updated"),
+                    onError: () => toast.error("Failed to update order"),
+                  },
+                )
               }
               className="border rounded-lg px-2 py-1 text-sm"
             >

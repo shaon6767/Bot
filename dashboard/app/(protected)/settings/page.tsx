@@ -1,11 +1,13 @@
 "use client";
 
+import { useToast } from "@/components/Toast";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import { useState } from "react";
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useSettings();
-  const { mutate, isPending, isSuccess } = useUpdateSettings();
+  const { mutate, isPending } = useUpdateSettings();
+  const toast = useToast();
 
   const [pageId, setPageId] = useState("");
   const [pageAccessToken, setPageAccessToken] = useState("");
@@ -21,7 +23,11 @@ export default function SettingsPage() {
       payload.instagramAccountId = instagramAccountId.trim();
 
     mutate(payload, {
-      onSuccess: () => setPageAccessToken(""),
+      onSuccess: () => {
+        toast.success("Settings saved");
+        setPageAccessToken("");
+      },
+      onError: () => toast.error("Failed to save settings"),
     });
   }
 
@@ -89,8 +95,6 @@ export default function SettingsPage() {
         >
           {isPending ? "Saving..." : "Save"}
         </button>
-
-        {isSuccess && <p className="text-sm text-green-600">Saved.</p>}
       </form>
     </div>
   );
