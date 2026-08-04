@@ -32,14 +32,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-xl font-semibold">Log in</h1>
+    <div className="flex min-h-screen items-center justify-center bg-paper px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
+        <h1 className="font-display text-2xl font-semibold text-ink">Log in</h1>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="email">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="email"
+          >
             Email
           </label>
           <input
@@ -48,12 +51,15 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="password">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="password"
+          >
             Password
           </label>
           <input
@@ -62,27 +68,27 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gray-900 text-white rounded py-2 disabled:opacity-50"
+          className="w-full rounded-md bg-teal py-2.5 text-sm font-medium text-white hover:bg-teal-dark transition-colors disabled:opacity-50"
         >
           {loading ? "Logging in..." : "Log in"}
         </button>
 
-        <p className="text-sm text-center">
-          <a href="/forgot-password" className="underline">
+        <p className="text-sm text-center text-slate">
+          <a href="/forgot-password" className="text-teal-dark underline">
             Forgot password?
           </a>
         </p>
 
-        <p className="text-sm text-center">
+        <p className="text-sm text-center text-slate">
           No account?{" "}
-          <a href="/register" className="underline">
+          <a href="/register" className="text-teal-dark underline">
             Register
           </a>
         </p>

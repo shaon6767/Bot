@@ -3,8 +3,10 @@ import { ProductList } from "@/components/ProductList";
 
 export default function ProductsPage() {
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-lg font-semibold mb-4">Products</h1>
+    <div>
+      <h1 className="font-display text-xl font-semibold text-ink mb-6">
+        Products
+      </h1>
       <ProductForm />
       <ProductList />
     </div>

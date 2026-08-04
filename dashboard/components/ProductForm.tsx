@@ -26,14 +26,17 @@ export function ProductForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col sm:flex-row gap-2 mb-6"
+    >
       <input
         type="text"
         placeholder="Product name"
         required
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="border rounded px-3 py-2 flex-1"
+        className="flex-1 rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
       />
       <input
         type="number"
@@ -43,16 +46,16 @@ export function ProductForm() {
         step="0.01"
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        className="border rounded px-3 py-2 w-32"
+        className="sm:w-32 rounded-md border border-border bg-white px-3 py-2 text-sm text-ink font-data focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
       />
       <button
         type="submit"
         disabled={isPending}
-        className="bg-gray-900 text-white rounded px-4 py-2 disabled:opacity-50"
+        className="rounded-md bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal-dark transition-colors disabled:opacity-50"
       >
         Add
       </button>
-      {error && <p className="text-sm text-red-600">Failed to add product</p>}
+      {error && <p className="text-sm text-danger">Failed to add product</p>}
     </form>
   );
 }

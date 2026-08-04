@@ -31,23 +31,44 @@ export default function SettingsPage() {
     });
   }
 
-  if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
+  if (isLoading) return <p className="text-sm text-slate">Loading...</p>;
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-lg font-semibold mb-4">Page Connection</h1>
+    <div>
+      <h1 className="font-display text-xl font-semibold text-ink mb-6">
+        Page Connection
+      </h1>
 
-      <div className="text-sm text-gray-600 mb-4 space-y-1">
-        <p>Page ID: {settings?.pageId ?? "Not set"}</p>
-        <p>Instagram Account ID: {settings?.instagramAccountId ?? "Not set"}</p>
-        <p>
-          Access Token: {settings?.pageAccessTokenSet ? "Set ✓" : "Not set"}
+      <div className="rounded-lg border border-border bg-white p-4 mb-6 text-sm space-y-1">
+        <p className="text-slate">
+          Page ID:{" "}
+          <span className="text-ink font-data">
+            {settings?.pageId ?? "Not set"}
+          </span>
+        </p>
+        <p className="text-slate">
+          Instagram Account ID:{" "}
+          <span className="text-ink font-data">
+            {settings?.instagramAccountId ?? "Not set"}
+          </span>
+        </p>
+        <p className="text-slate">
+          Access Token:{" "}
+          <span className="text-ink">
+            {settings?.pageAccessTokenSet ? "Set ✓" : "Not set"}
+          </span>
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 max-w-md rounded-lg border border-border bg-white p-4"
+      >
         <div>
-          <label className="block text-sm mb-1" htmlFor="pageId">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="pageId"
+          >
             Page ID
           </label>
           <input
@@ -56,12 +77,15 @@ export default function SettingsPage() {
             value={pageId}
             onChange={(e) => setPageId(e.target.value)}
             placeholder="Leave blank to keep current"
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="pageAccessToken">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="pageAccessToken"
+          >
             Page Access Token
           </label>
           <input
@@ -70,12 +94,15 @@ export default function SettingsPage() {
             value={pageAccessToken}
             onChange={(e) => setPageAccessToken(e.target.value)}
             placeholder="Leave blank to keep current"
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="instagramAccountId">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="instagramAccountId"
+          >
             Instagram Account ID (optional)
           </label>
           <input
@@ -84,14 +111,14 @@ export default function SettingsPage() {
             value={instagramAccountId}
             onChange={(e) => setInstagramAccountId(e.target.value)}
             placeholder="Leave blank to keep current"
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <button
           type="submit"
           disabled={isPending}
-          className="bg-gray-900 text-white rounded px-4 py-2 disabled:opacity-50"
+          className="rounded-md bg-teal px-4 py-2 text-sm font-medium text-white hover:bg-teal-dark transition-colors disabled:opacity-50"
         >
           {isPending ? "Saving..." : "Save"}
         </button>

@@ -43,14 +43,19 @@ export default function ResetPasswordPage({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-xl font-semibold">Set a new password</h1>
+    <div className="flex min-h-screen items-center justify-center bg-paper px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5">
+        <h1 className="font-display text-2xl font-semibold text-ink">
+          Set a new password
+        </h1>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="password">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="password"
+          >
             New password
           </label>
           <input
@@ -60,12 +65,15 @@ export default function ResetPasswordPage({
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <div>
-          <label className="block text-sm mb-1" htmlFor="confirmPassword">
+          <label
+            className="block text-sm font-medium text-ink mb-1.5"
+            htmlFor="confirmPassword"
+          >
             Confirm new password
           </label>
           <input
@@ -75,14 +83,14 @@ export default function ResetPasswordPage({
             minLength={8}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/40 focus:border-teal"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-gray-900 text-white rounded py-2 disabled:opacity-50"
+          className="w-full rounded-md bg-teal py-2.5 text-sm font-medium text-white hover:bg-teal-dark transition-colors disabled:opacity-50"
         >
           {loading ? "Saving..." : "Set new password"}
         </button>
