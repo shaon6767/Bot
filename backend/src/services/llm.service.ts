@@ -66,7 +66,7 @@ async function callGrok(prompt: string): Promise<string> {
       Authorization: `Bearer ${env.grokApiKey}`,
     },
     body: JSON.stringify({
-      model: "grok-4.1-fast",
+      model:"grok-4.1-fast-non-reasoning",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 200,
     }),
