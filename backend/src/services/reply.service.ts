@@ -72,7 +72,11 @@ export function processMessage(
     return parseOrder(normalized, products);
   }
 
-  if (hasWord(normalized, MENU_KEYWORDS)) {
+  if (
+    normalized === "menu" ||
+    normalized === "list" ||
+    normalized === "products"
+  ) {
     return { understood: true, replyText: buildMenuText(products) };
   }
 
