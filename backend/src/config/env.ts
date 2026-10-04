@@ -17,7 +17,5 @@ export const env = {
   jwtSecret: required("JWT_SECRET"),
   metaAppSecret: required("META_APP_SECRET"),
   metaVerifyToken: required("META_VERIFY_TOKEN"),
-  geminiApiKey: process.env.GEMINI_API_KEY,
-  grokApiKey: process.env.GROK_API_KEY,
   resendApiKey: process.env.RESEND_API_KEY,
 };

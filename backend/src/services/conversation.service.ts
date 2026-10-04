@@ -6,12 +6,10 @@ import { Message } from "../models/Message.js";
 import { Product } from "../models/Product.js";
 import { IncomingMessage } from "../types/index.js";
 import { logger } from "../utils/logger.js";
-import { generateSmartReply } from "./llm.service.js";
 import { createOrder } from "./order.service.js";
 import { isLikelyOffTopic, processMessage } from "./reply.service.js";
 
-const WAITING_MESSAGE = "Let me check on that for you, one moment...";
-const LLM_FALLBACK_MESSAGE =
+const FALLBACK_MESSAGE =
   "Thanks for your message! We'll get back to you shortly.";
 const OFF_TOPIC_MESSAGE =
   "Ask me anything about our products or your order, and I'll help! 🙂";
@@ -70,25 +68,15 @@ export async function handleIncomingMessage(
 
   if (isLikelyOffTopic(msg.text)) {
     await sendAndLog(adapter, business, msg, OFF_TOPIC_MESSAGE, "off-topic");
-    return; // never touches the LLM — no waiting message either, nothing to wait for
+    return; // keep off-topic handling immediate and consistent
   }
 
-  const waitingSent = await sendAndLog(
-    adapter,
-    business,
-    msg,
-    WAITING_MESSAGE,
-    "waiting",
-  );
-  if (!waitingSent) return;
-
-  const smartReply = await generateSmartReply(msg.text, products);
   await sendAndLog(
     adapter,
     business,
     msg,
-    smartReply ?? LLM_FALLBACK_MESSAGE,
-    "llm",
+    FALLBACK_MESSAGE,
+    "fallback",
   );
 }
 
