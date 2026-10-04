@@ -7,19 +7,23 @@ import { Product } from "../models/Product.js";
 import { IncomingMessage } from "../types/index.js";
 import { logger } from "../utils/logger.js";
 import { createOrder } from "./order.service.js";
+import {
+  FallbackKind,
+  selectFallback,
+} from "./fallbackMessages.js";
 import { getMicroserviceReply } from "./microservice.service.js";
 import { isLikelyOffTopic, processMessage } from "./reply.service.js";
 
-const FALLBACK_MESSAGE =
-  "Thanks for your message! We'll get back to you shortly.";
 const OFF_TOPIC_MESSAGE =
   "Ask me anything about our products or your order, and I'll help! 🙂";
-const MAIN_QUICK_REPLIES = [
+export const MAIN_QUICK_REPLIES = [
+  { title: "Products", payload: "ICE_BREAKER_MENU" },
   { title: "Delivery", payload: "ORD_DELIVERY" },
-  { title: "Returns", payload: "ORD_RETURNS" },
   { title: "Payment", payload: "INFO_PAYMENT" },
-  { title: "Main menu", payload: "MAIN_MENU" },
+  { title: "Contact", payload: "INFO_CONTACT" },
 ];
+export const MAIN_MENU_REPLY_TEXT =
+  "How can I help you today? Choose an option below.";
 
 type Adapter = typeof messengerAdapter | typeof instagramAdapter;
 
@@ -72,6 +76,11 @@ export async function handleIncomingMessage(
       return;
     }
 
+    const isServicePayload =
+      msg.payload.startsWith("ORD_") || msg.payload.startsWith("INFO_");
+    const isKnownPayload =
+      msg.payload.startsWith("ICE_BREAKER_") || msg.payload === "MAIN_MENU";
+
     const microserviceReply = await getMicroserviceReply(
       msg.text,
       msg.channel,
@@ -84,18 +93,23 @@ export async function handleIncomingMessage(
         adapter,
         business,
         msg,
-        microserviceReply.text ?? FALLBACK_MESSAGE,
+        microserviceReply.text ?? selectFallback("service-unavailable"),
         "service",
         microserviceReply.quickReplies,
       );
       return;
     }
 
+    const fallbackKind: FallbackKind = isServicePayload
+      ? "service-unavailable"
+      : isKnownPayload
+        ? "unknown-text"
+        : "unknown-payload";
     await sendAndLog(
       adapter,
       business,
       msg,
-      FALLBACK_MESSAGE,
+      selectFallback(fallbackKind),
       "fallback",
       MAIN_QUICK_REPLIES,
     );
@@ -107,7 +121,7 @@ export async function handleIncomingMessage(
       adapter,
       business,
       msg,
-      FALLBACK_MESSAGE,
+      selectFallback("attachment"),
       "fallback",
       MAIN_QUICK_REPLIES,
     );
@@ -154,7 +168,7 @@ export async function handleIncomingMessage(
       adapter,
       business,
       msg,
-      microserviceReply.text ?? FALLBACK_MESSAGE,
+      microserviceReply.text ?? selectFallback("service-unavailable"),
       "service",
       microserviceReply.quickReplies,
     );
@@ -165,13 +179,13 @@ export async function handleIncomingMessage(
     adapter,
     business,
     msg,
-    FALLBACK_MESSAGE,
+    selectFallback("unknown-text"),
     "fallback",
     MAIN_QUICK_REPLIES,
   );
 }
 
-function getLocalPayloadReply(
+export function getLocalPayloadReply(
   payload: string,
   products: any[],
 ): { replyText: string } | null {
@@ -187,7 +201,7 @@ function getLocalPayloadReply(
           "To order, type: order <product name> <quantity>.",
       };
     case "MAIN_MENU":
-      return { replyText: processMessage("menu", products).replyText ?? "Menu" };
+      return { replyText: MAIN_MENU_REPLY_TEXT };
     default:
       return null;
   }

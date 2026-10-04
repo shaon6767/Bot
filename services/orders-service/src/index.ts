@@ -40,6 +40,17 @@ const logger = {
   error: (...args: unknown[]) => console.error("[ERROR]", ...args),
 };
 
+if (process.env.NODE_ENV === "production") {
+  const placeholderCount = Object.values(MESSAGE_TREE).filter((node) =>
+    node.text.includes("[EDIT:"),
+  ).length;
+  if (placeholderCount > 0) {
+    logger.warn(
+      `orders-service has ${placeholderCount} placeholder message text(s) containing [EDIT:]`,
+    );
+  }
+}
+
 app.disable("x-powered-by");
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "10kb" }));

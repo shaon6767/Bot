@@ -11,12 +11,64 @@ export interface ReplyResult {
   orderItems?: ParsedOrderItem[];
 }
 
-const MENU_KEYWORDS = ["menu", "products", "price", "prices", "list"];
-const GREETING_KEYWORDS = ["hi", "hello", "hey"];
+function isWithinOneEdit(source: string, candidate: string): boolean {
+  if (source === candidate) return true;
+  if (Math.abs(source.length - candidate.length) > 1) return false;
 
-function hasWord(normalized: string, words: string[]): boolean {
-  const tokens = normalized.split(/[^a-z0-9]+/i).filter(Boolean);
-  return words.some((w) => tokens.includes(w));
+  if (source.length === candidate.length) {
+    let mismatch = -1;
+    for (let index = 0; index < source.length; index += 1) {
+      if (source[index] === candidate[index]) continue;
+      if (mismatch !== -1) {
+        return (
+          index === mismatch + 1 &&
+          source[mismatch] === candidate[index] &&
+          source[index] === candidate[mismatch] &&
+          source.slice(index + 1) === candidate.slice(index + 1)
+        );
+      }
+      mismatch = index;
+    }
+    return mismatch !== -1;
+  }
+
+  const longer = source.length > candidate.length ? source : candidate;
+  const shorter = source.length > candidate.length ? candidate : source;
+  let longIndex = 0;
+  let shortIndex = 0;
+  let skipped = false;
+
+  while (longIndex < longer.length && shortIndex < shorter.length) {
+    if (longer[longIndex] === shorter[shortIndex]) {
+      longIndex += 1;
+      shortIndex += 1;
+    } else if (skipped) {
+      return false;
+    } else {
+      skipped = true;
+      longIndex += 1;
+    }
+  }
+
+  return true;
+}
+
+function isGreeting(text: string): boolean {
+  const normalized = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const tokens = normalized ? normalized.split(" ") : [];
+  if (tokens.length > 3) return false;
+
+  return tokens.some(
+    (token) =>
+      token === "hi" ||
+      /^hi{2,}$/.test(token) ||
+      isWithinOneEdit("hello", token) ||
+      isWithinOneEdit("hey", token),
+  );
 }
 
 const OFF_TOPIC_PATTERNS = [
@@ -80,7 +132,7 @@ export function processMessage(
     return { understood: true, replyText: buildMenuText(products) };
   }
 
-  if (hasWord(normalized, GREETING_KEYWORDS)) {
+  if (isGreeting(text)) {
     return {
       understood: true,
       replyText: `Hi! Type "menu" to see our products, or "order <product name> <quantity>" to order.`,

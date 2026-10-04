@@ -55,6 +55,48 @@ export const MESSAGE_TREE: Record<string, MessageNode> = {
   },
 };
 
+function isWithinOneEdit(source: string, candidate: string): boolean {
+  if (source === candidate) return true;
+  if (Math.abs(source.length - candidate.length) > 1) return false;
+
+  if (source.length === candidate.length) {
+    let mismatch = -1;
+    for (let index = 0; index < source.length; index += 1) {
+      if (source[index] === candidate[index]) continue;
+      if (mismatch !== -1) {
+        return (
+          index === mismatch + 1 &&
+          source[mismatch] === candidate[index] &&
+          source[index] === candidate[mismatch] &&
+          source.slice(index + 1) === candidate.slice(index + 1)
+        );
+      }
+      mismatch = index;
+    }
+    return mismatch !== -1;
+  }
+
+  const longer = source.length > candidate.length ? source : candidate;
+  const shorter = source.length > candidate.length ? candidate : source;
+  let longIndex = 0;
+  let shortIndex = 0;
+  let skipped = false;
+
+  while (longIndex < longer.length && shortIndex < shorter.length) {
+    if (longer[longIndex] === shorter[shortIndex]) {
+      longIndex += 1;
+      shortIndex += 1;
+    } else if (skipped) {
+      return false;
+    } else {
+      skipped = true;
+      longIndex += 1;
+    }
+  }
+
+  return true;
+}
+
 export function findMatchedNode(text: string): MessageNode | undefined {
   const normalized = text.trim().toLowerCase();
   if (!normalized) return undefined;
@@ -64,9 +106,16 @@ export function findMatchedNode(text: string): MessageNode | undefined {
   );
 
   for (const node of orderedNodes) {
-    const matches = node.keywords.some((keyword) =>
-      normalized.includes(keyword.toLowerCase()),
-    );
+    const matches = node.keywords.some((keyword) => {
+      const normalizedKeyword = keyword.toLowerCase();
+      if (normalized.includes(normalizedKeyword)) return true;
+      if (normalizedKeyword.length < 5 || normalizedKeyword.includes(" ")) {
+        return false;
+      }
+
+      const words = normalized.match(/[a-z0-9]+/g) ?? [];
+      return words.some((word) => isWithinOneEdit(normalizedKeyword, word));
+    });
     if (matches) return node;
   }
 

@@ -16,6 +16,8 @@ if (!fs.existsSync(fileURLToPath(distUrl))) {
     ["HTTP 500 from both services returns null for typed text and payload"],
     ["invalid JSON response returns null"],
     ["schema-invalid response returns null"],
+    ["unconfigured orders URL warns once across repeated payload taps"],
+    ["refused service connection logs its short error code"],
   ];
 
   const childSource = `
@@ -49,6 +51,8 @@ if (!fs.existsSync(fileURLToPath(distUrl))) {
     };
     const reply = (text, matched = true) => ({ matched, text });
     const scenario = Number(process.env.CHECK_SCENARIO);
+    const warnings = [];
+    console.warn = (...args) => warnings.push(args.join(" "));
 
     try {
       const counts = { orders: 0, info: 0 };
@@ -165,6 +169,41 @@ if (!fs.existsSync(fileURLToPath(distUrl))) {
           const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
           result = await getMicroserviceReply("typed question", "messenger", "Sample Shop");
           assert.equal(result, null);
+          break;
+        }
+        case 8: {
+          process.env.ORDERS_SERVICE_URL = "";
+          process.env.INFO_SERVICE_URL = "";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          for (let index = 0; index < 4; index += 1) {
+            result = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
+            assert.equal(result, null);
+          }
+          assert.equal(
+            warnings.filter((warning) => warning === "[WARN] Microservice orders URL is not configured").length,
+            1,
+          );
+          break;
+        }
+        case 9: {
+          const unused = http.createServer();
+          await new Promise((resolve, reject) => {
+            unused.once("error", reject);
+            unused.listen(0, "127.0.0.1", resolve);
+          });
+          const port = unused.address().port;
+          await new Promise((resolve) => unused.close(resolve));
+          process.env.ORDERS_SERVICE_URL = "http://127.0.0.1:" + port;
+          process.env.INFO_SERVICE_URL = "";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
+          assert.equal(result, null);
+          assert(
+            warnings.some((warning) =>
+              warning.includes("Microservice orders request failed (ECONNREFUSED)"),
+            ),
+            "expected ECONNREFUSED warning",
+          );
           break;
         }
         default:

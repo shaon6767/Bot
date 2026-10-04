@@ -16,6 +16,33 @@ export const MicroserviceReplySchema = z.object({
 
 export type MicroserviceReply = z.infer<typeof MicroserviceReplySchema>;
 
+const warnedUnconfiguredServices = new Set<"orders" | "info">();
+
+function warnServiceNotConfigured(type: "orders" | "info"): void {
+  if (warnedUnconfiguredServices.has(type)) return;
+  warnedUnconfiguredServices.add(type);
+  logger.warn(`Microservice ${type} URL is not configured`);
+}
+
+function getShortErrorCode(error: unknown): string {
+  if (!error || typeof error !== "object") return "UNKNOWN";
+  const requestError = error as {
+    cause?: unknown;
+    code?: unknown;
+    name?: unknown;
+  };
+  const cause =
+    requestError.cause && typeof requestError.cause === "object"
+      ? (requestError.cause as { code?: unknown }).code
+      : undefined;
+  const code =
+    (typeof cause === "string" && cause) ||
+    (typeof requestError.code === "string" && requestError.code) ||
+    (typeof requestError.name === "string" && requestError.name) ||
+    "UNKNOWN";
+  return /^[A-Za-z0-9_-]{1,40}$/.test(code) ? code : "UNKNOWN";
+}
+
 function buildServiceUrl(baseUrl: string): string | null {
   const trimmed = baseUrl.trim();
   if (!trimmed) return null;
@@ -88,8 +115,12 @@ async function requestMicroservice(
     }
 
     return result.data;
-  } catch (error: any) {
-    const abortReasonName = signal.reason?.name ?? error?.name;
+  } catch (error: unknown) {
+    const errorName =
+      error && typeof error === "object" && "name" in error
+        ? error.name
+        : undefined;
+    const abortReasonName = signal.reason?.name ?? errorName;
     if (abortReasonName === "TimeoutError") {
       logger.warn(`Microservice ${type} timed out`);
       return null;
@@ -99,7 +130,9 @@ async function requestMicroservice(
       return null;
     }
 
-    logger.warn(`Microservice ${type} request failed`);
+    logger.warn(
+      `Microservice ${type} request failed (${getShortErrorCode(error)})`,
+    );
     return null;
   }
 }
@@ -122,7 +155,10 @@ export async function getMicroserviceReply(
       serviceType === "orders" ? env.ordersServiceUrl : env.infoServiceUrl;
     const serviceUrl = configuredUrl ? buildServiceUrl(configuredUrl) : null;
 
-    if (!serviceUrl) return null;
+    if (!serviceUrl) {
+      warnServiceNotConfigured(serviceType);
+      return null;
+    }
 
     const controller = new AbortController();
     try {
@@ -145,14 +181,20 @@ export async function getMicroserviceReply(
     { type: "info", url: env.infoServiceUrl },
   ];
 
-  const validServices = services
+  const servicesWithUrls = services
     .map((service) => ({
       ...service,
       url: buildServiceUrl(service.url ?? ""),
-    }))
-    .filter((service): service is { type: "orders" | "info"; url: string } =>
+    }));
+
+  for (const service of servicesWithUrls) {
+    if (!service.url) warnServiceNotConfigured(service.type);
+  }
+
+  const validServices = servicesWithUrls.filter(
+    (service): service is { type: "orders" | "info"; url: string } =>
       Boolean(service.url),
-    );
+  );
 
   if (validServices.length === 0) {
     return null;

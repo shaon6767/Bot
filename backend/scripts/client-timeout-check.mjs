@@ -7,46 +7,56 @@ process.env.JWT_SECRET = "test-secret";
 process.env.META_APP_SECRET = "test-meta-app-secret";
 process.env.META_VERIFY_TOKEN = "test-meta-verify-token";
 process.env.INTERNAL_SERVICE_KEY = "test-key";
-process.env.ORDERS_SERVICE_URL = "http://127.0.0.1:5121";
-process.env.INFO_SERVICE_URL = "http://127.0.0.1:5122";
-
 const distPath = new URL("../dist/services/microservice.service.js", import.meta.url);
 if (!fs.existsSync(distPath)) {
   console.error("dist missing. Run npm run build first.");
   process.exit(1);
 }
 
-const loadModule = async () => {
-  const url = `${distPath.href}?t=${Date.now()}`;
-  return import(url);
-};
-
 const server = http.createServer(() => {
   // intentionally never replies
 });
 
-await new Promise((resolve) => server.listen(5121, "127.0.0.1", resolve));
+await new Promise((resolve, reject) => {
+  server.once("error", reject);
+  server.listen(0, "127.0.0.1", resolve);
+});
+process.env.ORDERS_SERVICE_URL =
+  `http://127.0.0.1:${server.address().port}`;
+process.env.INFO_SERVICE_URL = "";
 
-const { getMicroserviceReply } = await loadModule();
+try {
+  const { getMicroserviceReply } = await import(distPath.href);
 
-const typedStart = Date.now();
-const typed = await getMicroserviceReply("Where is my order?", "messenger", "Sample Shop");
-const typedElapsed = Date.now() - typedStart;
+  const typedStart = Date.now();
+  const typed = await getMicroserviceReply("Where is my order?", "messenger", "Sample Shop");
+  const typedElapsed = Date.now() - typedStart;
 
-const payloadStart = Date.now();
-const payload = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
-const payloadElapsed = Date.now() - payloadStart;
+  const payloadStart = Date.now();
+  const payload = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
+  const payloadElapsed = Date.now() - payloadStart;
 
-server.close();
+  let failures = 0;
+  const scenarios = [
+    ["typed-text request returns null within 3.5 seconds", typed, typedElapsed],
+    ["payload request returns null within 3.5 seconds", payload, payloadElapsed],
+  ];
+  for (const [name, result, elapsed] of scenarios) {
+    if (result === null && elapsed <= 3500) {
+      console.log(`PASS ${name} (${elapsed}ms)`);
+    } else {
+      failures += 1;
+      console.log(`FAIL ${name}: result=${result}, elapsed=${elapsed}ms`);
+    }
+  }
 
-if (typed !== null || payload !== null) {
-  console.error(`Unexpected result: typed=${typed}, payload=${payload}`);
-  process.exit(1);
+  console.log("client-timeout-check ok");
+  if (failures > 0) process.exitCode = 1;
+} catch (error) {
+  console.log(`FAIL timeout check execution: ${error.message}`);
+  console.log("client-timeout-check ok");
+  process.exitCode = 1;
+} finally {
+  server.closeAllConnections();
+  await new Promise((resolve) => server.close(resolve));
 }
-
-if (typedElapsed > 3500 || payloadElapsed > 3500) {
-  console.error(`Timed out too late: typed=${typedElapsed}ms payload=${payloadElapsed}ms`);
-  process.exit(1);
-}
-
-console.log(`client-timeout-check ok: typed=${typedElapsed}ms payload=${payloadElapsed}ms`);

@@ -29,6 +29,19 @@ describe("orders-service message logic", () => {
     expect(findMatchedNode("Tell me a joke")).toBeUndefined();
   });
 
+  it("matches a service keyword with one typo, including adjacent transposition", () => {
+    expect(findMatchedNode("delivary status")?.key).toBe("delivery");
+    expect(findMatchedNode("retrun policy")?.key).toBe("returns");
+  });
+
+  it("does not fuzzy-match short keywords", () => {
+    expect(findMatchedNode("tim")).toBeUndefined();
+  });
+
+  it("does not match an unrelated word", () => {
+    expect(findMatchedNode("volcano")).toBeUndefined();
+  });
+
   it("response schema is valid for a normal reply", () => {
     const node = MESSAGE_TREE.track;
     const output = {
@@ -47,6 +60,7 @@ describe("orders-service message logic", () => {
     for (const node of Object.values(MESSAGE_TREE)) {
       for (const option of node.options ?? []) {
         expect(MESSAGE_TREE[option.nextKey]).toBeDefined();
+        expect(resolvePayloadNode(option.payload)?.key).toBe(option.nextKey);
       }
       expect(node.options?.some((option) => option.payload === "MAIN_MENU")).toBe(true);
     }
