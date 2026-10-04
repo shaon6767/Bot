@@ -5,6 +5,7 @@ export interface IncomingMessage {
   senderId: string;
   pageId: string;
   text: string;
+  payload?: string;
   metaMessageId: string;
   timestamp: number;
 }

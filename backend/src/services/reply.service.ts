@@ -56,7 +56,7 @@ function looksLikeSpamOrJunk(text: string): boolean {
   return false;
 }
 
-// Runs BEFORE the LLM is ever called — catches obvious junk cheaply so it never burns LLM quota
+// Catches obvious junk cheaply before any fallback or service lookup is attempted.
 export function isLikelyOffTopic(text: string): boolean {
   if (looksLikeSpamOrJunk(text)) return true;
   return OFF_TOPIC_PATTERNS.some((pattern) => pattern.test(text));

@@ -5,26 +5,49 @@ export const messengerAdapter = {
         const messages = [];
         const pageId = entry.id;
         for (const event of entry.messaging || []) {
-            if (!event.message || event.message.is_echo)
+            const isPostback = Boolean(event.postback);
+            const quickReply = event.message?.quick_reply;
+            const text = event.message?.text ?? event.postback?.title ?? quickReply?.title ?? "";
+            if (!event.message && !isPostback)
                 continue;
+            if (event.message?.is_echo)
+                continue;
+            const payload = event.postback?.payload ?? quickReply?.payload ?? undefined;
+            const messageId = event.message?.mid ??
+                `${event.sender?.id ?? "unknown"}-${event.timestamp ?? Date.now()}-${payload ?? "manual"}`;
             messages.push({
                 channel: "messenger",
                 senderId: event.sender.id,
                 pageId,
-                text: event.message.text ?? "",
-                metaMessageId: event.message.mid,
-                timestamp: event.timestamp,
+                text,
+                payload,
+                metaMessageId: messageId,
+                timestamp: event.timestamp ?? Date.now(),
             });
         }
         return messages;
     },
-    async sendMessage(pageAccessToken, recipientId, text) {
-        const response = await fetch(`${GRAPH_API_URL}?access_token=${pageAccessToken}`, {
+    async sendMessage(pageAccessToken, recipientId, text, quickReplies) {
+        const response = await fetch(GRAPH_API_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${pageAccessToken}`,
+            },
             body: JSON.stringify({
                 recipient: { id: recipientId },
-                message: { text },
+                message: {
+                    text,
+                    ...(quickReplies && quickReplies.length > 0
+                        ? {
+                            quick_replies: quickReplies.map((reply) => ({
+                                content_type: "text",
+                                title: reply.title,
+                                payload: reply.payload,
+                            })),
+                        }
+                        : {}),
+                },
             }),
         });
         if (!response.ok) {

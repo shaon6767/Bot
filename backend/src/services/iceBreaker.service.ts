@@ -15,14 +15,14 @@ export async function setIceBreakers(
   pageAccessToken: string,
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${MESSENGER_PROFILE_URL}?access_token=${pageAccessToken}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ice_breakers: DEFAULT_ICE_BREAKERS }),
+    const response = await fetch(MESSENGER_PROFILE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pageAccessToken}`,
       },
-    );
+      body: JSON.stringify({ ice_breakers: DEFAULT_ICE_BREAKERS }),
+    });
 
     if (!response.ok) {
       const errorBody = await response.text();

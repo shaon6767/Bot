@@ -1,5 +1,5 @@
 import { IncomingMessage } from "../types/index.js";
-import { ChannelAdapter } from "./channelAdapter.js";
+import { ChannelAdapter, QuickReply } from "./channelAdapter.js";
 
 const GRAPH_API_URL = "https://graph.facebook.com/v25.0/me/messages";
 
@@ -11,15 +11,28 @@ export const instagramAdapter: ChannelAdapter = {
     const pageId = entry.id;
 
     for (const event of entry.messaging || []) {
-      if (!event.message || event.message.is_echo) continue;
+      const isPostback = Boolean(event.postback);
+      const quickReply = event.message?.quick_reply;
+      const text = event.message?.text ?? event.postback?.title ?? quickReply?.title ?? "";
+
+      if (!event.message && !isPostback) continue;
+      if (event.message?.is_echo) continue;
+
+      const payload =
+        event.postback?.payload ?? quickReply?.payload ?? undefined;
+
+      const messageId =
+        event.message?.mid ??
+        `${event.sender?.id ?? "unknown"}-${event.timestamp ?? Date.now()}-${payload ?? "manual"}`;
 
       messages.push({
         channel: "instagram",
         senderId: event.sender.id,
         pageId,
-        text: event.message.text ?? "",
-        metaMessageId: event.message.mid,
-        timestamp: event.timestamp,
+        text,
+        payload,
+        metaMessageId: messageId,
+        timestamp: event.timestamp ?? Date.now(),
       });
     }
 
@@ -30,18 +43,30 @@ export const instagramAdapter: ChannelAdapter = {
     pageAccessToken: string,
     recipientId: string,
     text: string,
+    quickReplies?: QuickReply[],
   ): Promise<void> {
-    const response = await fetch(
-      `${GRAPH_API_URL}?access_token=${pageAccessToken}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient: { id: recipientId },
-          message: { text },
-        }),
+    const response = await fetch(GRAPH_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${pageAccessToken}`,
       },
-    );
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        message: {
+          text,
+          ...(quickReplies && quickReplies.length > 0
+            ? {
+                quick_replies: quickReplies.map((reply) => ({
+                  content_type: "text",
+                  title: reply.title,
+                  payload: reply.payload,
+                })),
+              }
+            : {}),
+        },
+      }),
+    });
 
     if (!response.ok) {
       const errorBody = await response.text();

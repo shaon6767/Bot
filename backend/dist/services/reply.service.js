@@ -42,7 +42,7 @@ function looksLikeSpamOrJunk(text) {
         return true; // no letters/digits at all — \u0980-\u09FF covers Bangla script
     return false;
 }
-// Runs BEFORE the LLM is ever called — catches obvious junk cheaply so it never burns LLM quota
+// Catches obvious junk cheaply before any fallback or service lookup is attempted.
 export function isLikelyOffTopic(text) {
     if (looksLikeSpamOrJunk(text))
         return true;

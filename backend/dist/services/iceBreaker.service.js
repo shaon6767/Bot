@@ -9,9 +9,12 @@ const DEFAULT_ICE_BREAKERS = [
 ];
 export async function setIceBreakers(pageAccessToken) {
     try {
-        const response = await fetch(`${MESSENGER_PROFILE_URL}?access_token=${pageAccessToken}`, {
+        const response = await fetch(MESSENGER_PROFILE_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${pageAccessToken}`,
+            },
             body: JSON.stringify({ ice_breakers: DEFAULT_ICE_BREAKERS }),
         });
         if (!response.ok) {
