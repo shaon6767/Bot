@@ -1,127 +1,209 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const distUrl = new URL("../dist/services/microservice.service.js", import.meta.url);
-if (!fs.existsSync(distUrl)) {
+if (!fs.existsSync(fileURLToPath(distUrl))) {
   console.error("dist missing. Run npm run build first.");
-  process.exit(1);
-}
+  process.exitCode = 1;
+} else {
+  const scenarios = [
+    ["ORD_DELIVERY routes only to orders with the internal key and payload"],
+    ["INFO_PAYMENT routes only to info"],
+    ["unknown payload returns null without calling either service"],
+    ["typed text queries both services and returns a matched reply"],
+    ["service base URLs with and without /reply both work"],
+    ["HTTP 500 from both services returns null for typed text and payload"],
+    ["invalid JSON response returns null"],
+    ["schema-invalid response returns null"],
+  ];
 
-const distPath = fileURLToPath(distUrl);
-const distModuleUrl = pathToFileURL(distPath).href;
+  const childSource = `
+    import assert from "node:assert/strict";
+    import http from "node:http";
 
-const loadModule = (ordersUrl, infoUrl) => {
-  const moduleUrl = new URL(`${distModuleUrl}?ts=${Date.now()}-${Math.random()}`);
-  process.env.ORDERS_SERVICE_URL = ordersUrl;
-  process.env.INFO_SERVICE_URL = infoUrl;
-  return import(moduleUrl.href);
-};
+    const servers = [];
+    const startServer = async (handler) => {
+      const server = http.createServer((req, res) => {
+        const chunks = [];
+        req.on("data", (chunk) => chunks.push(chunk));
+        req.on("end", () => handler(req, res, Buffer.concat(chunks).toString()));
+      });
+      servers.push(server);
+      await new Promise((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      const { port } = server.address();
+      return { server, url: "http://127.0.0.1:" + port };
+    };
+    const closeServers = async () => {
+      await Promise.all(servers.map((server) => new Promise((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      })));
+    };
+    const json = (res, body, status = 200) => {
+      res.writeHead(status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(body));
+    };
+    const reply = (text, matched = true) => ({ matched, text });
+    const scenario = Number(process.env.CHECK_SCENARIO);
 
-const scenario = `
-  const http = await import("node:http");
-  process.env.CLIENT_URL = "http://localhost";
-  process.env.MONGO_URI = "mongodb://localhost:27017/test";
-  process.env.JWT_SECRET = "test-secret";
-  process.env.META_APP_SECRET = "test-meta-app-secret";
-  process.env.META_VERIFY_TOKEN = "test-meta-verify-token";
-  process.env.INTERNAL_SERVICE_KEY = "test-key";
+    try {
+      const counts = { orders: 0, info: 0 };
+      const requests = { orders: [], info: [] };
+      const makeReplyServer = (type, createResponse) => startServer((req, res, rawBody) => {
+        counts[type] += 1;
+        requests[type].push({
+          path: req.url,
+          key: req.headers["x-internal-key"],
+          body: JSON.parse(rawBody || "{}"),
+        });
+        createResponse(req, res);
+      });
 
-  const loadModule = (ordersUrl, infoUrl) => {
-    const moduleUrl = new URL(${JSON.stringify(`${distModuleUrl}?ts=`)} + Date.now() + "-" + Math.random());
-    process.env.ORDERS_SERVICE_URL = ordersUrl;
-    process.env.INFO_SERVICE_URL = infoUrl;
-    return import(moduleUrl.href);
-  };
+      let orders;
+      let info;
+      let result;
+      switch (scenario) {
+        case 0: {
+          orders = await makeReplyServer("orders", (_req, res) => json(res, reply("orders reply")));
+          info = await makeReplyServer("info", (_req, res) => json(res, reply("info reply")));
+          process.env.ORDERS_SERVICE_URL = orders.url;
+          process.env.INFO_SERVICE_URL = info.url + "/reply";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
+          assert.equal(result?.text, "orders reply");
+          assert.deepEqual(counts, { orders: 1, info: 0 });
+          assert.equal(requests.orders[0].path, "/reply");
+          assert.equal(requests.orders[0].key, "test-key");
+          assert.equal(requests.orders[0].body.payload, "ORD_DELIVERY");
+          break;
+        }
+        case 1: {
+          orders = await makeReplyServer("orders", (_req, res) => json(res, reply("orders reply")));
+          info = await makeReplyServer("info", (_req, res) => json(res, reply("info reply")));
+          process.env.ORDERS_SERVICE_URL = orders.url;
+          process.env.INFO_SERVICE_URL = info.url;
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "INFO_PAYMENT");
+          assert.equal(result?.text, "info reply");
+          assert.deepEqual(counts, { orders: 0, info: 1 });
+          assert.equal(requests.info[0].body.payload, "INFO_PAYMENT");
+          break;
+        }
+        case 2: {
+          orders = await makeReplyServer("orders", (_req, res) => json(res, reply("orders reply")));
+          info = await makeReplyServer("info", (_req, res) => json(res, reply("info reply")));
+          process.env.ORDERS_SERVICE_URL = orders.url;
+          process.env.INFO_SERVICE_URL = info.url;
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "FOO_BAR");
+          assert.equal(result, null);
+          assert.deepEqual(counts, { orders: 0, info: 0 });
+          break;
+        }
+        case 3: {
+          orders = await makeReplyServer("orders", (_req, res) => json(res, reply("no order match", false)));
+          info = await makeReplyServer("info", (_req, res) => json(res, reply("matched info reply")));
+          process.env.ORDERS_SERVICE_URL = orders.url;
+          process.env.INFO_SERVICE_URL = info.url;
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("payment and delivery", "messenger", "Sample Shop");
+          assert.equal(result?.text, "matched info reply");
+          assert.deepEqual(counts, { orders: 1, info: 1 });
+          assert.equal(requests.orders[0].body.text, "payment and delivery");
+          assert.equal(requests.info[0].body.text, "payment and delivery");
+          break;
+        }
+        case 4: {
+          orders = await makeReplyServer("orders", (_req, res) => json(res, reply("no order match", false)));
+          info = await makeReplyServer("info", (_req, res) => json(res, reply("matched info reply")));
+          process.env.ORDERS_SERVICE_URL = orders.url;
+          process.env.INFO_SERVICE_URL = info.url + "/reply";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("typed question", "messenger", "Sample Shop");
+          assert.equal(result?.text, "matched info reply");
+          assert.equal(requests.orders[0].path, "/reply");
+          assert.equal(requests.info[0].path, "/reply");
+          assert.deepEqual(counts, { orders: 1, info: 1 });
+          break;
+        }
+        case 5: {
+          const failing = await startServer((_req, res) => {
+            counts.orders += 1;
+            res.writeHead(500);
+            res.end("upstream failure");
+          });
+          process.env.ORDERS_SERVICE_URL = failing.url;
+          process.env.INFO_SERVICE_URL = failing.url;
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          const typedResult = await getMicroserviceReply("typed question", "messenger", "Sample Shop");
+          const payloadResult = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
+          assert.equal(typedResult, null);
+          assert.equal(payloadResult, null);
+          assert.equal(counts.orders, 3);
+          break;
+        }
+        case 6: {
+          const invalidJson = await startServer((_req, res) => {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end("{");
+          });
+          process.env.ORDERS_SERVICE_URL = invalidJson.url;
+          process.env.INFO_SERVICE_URL = "";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("typed question", "messenger", "Sample Shop");
+          assert.equal(result, null);
+          break;
+        }
+        case 7: {
+          const invalidSchema = await startServer((_req, res) => json(res, { matched: "yes", text: "bad schema" }));
+          process.env.ORDERS_SERVICE_URL = invalidSchema.url;
+          process.env.INFO_SERVICE_URL = "";
+          const { getMicroserviceReply } = await import(${JSON.stringify(distUrl.href)});
+          result = await getMicroserviceReply("typed question", "messenger", "Sample Shop");
+          assert.equal(result, null);
+          break;
+        }
+        default:
+          throw new Error("Unknown scenario");
+      }
+    } finally {
+      await closeServers();
+    }
+  `;
 
-  const { getMicroserviceReply } = await loadModule("http://127.0.0.1:5123", "http://127.0.0.1:5124/reply");
-
-  const orderHits = { count: 0, lastBody: null, lastHeader: null };
-  const infoHits = { count: 0, lastBody: null, lastHeader: null };
-
-  const orderServer = http.createServer((req, res) => {
-    orderHits.count += 1;
-    let body = "";
-    req.on("data", (chunk) => { body += chunk; });
-    req.on("end", () => {
-      orderHits.lastBody = JSON.parse(body || "{}");
-      orderHits.lastHeader = req.headers["x-internal-key"];
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ matched: true, text: "orders reply", quickReplies: [{ title: "Main menu", payload: "MAIN_MENU" }] }));
+  let failures = 0;
+  for (let index = 0; index < scenarios.length; index += 1) {
+    const [name] = scenarios[index];
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", childSource], {
+      env: {
+        CHECK_SCENARIO: String(index),
+        CLIENT_URL: "http://127.0.0.1",
+        MONGO_URI: "mongodb://127.0.0.1:1/test",
+        JWT_SECRET: "test-secret",
+        META_APP_SECRET: "test-meta-app-secret",
+        META_VERIFY_TOKEN: "test-meta-verify-token",
+        INTERNAL_SERVICE_KEY: "test-key",
+        ORDERS_SERVICE_URL: "",
+        INFO_SERVICE_URL: "",
+      },
+      encoding: "utf8",
+      timeout: 10000,
+      maxBuffer: 1024 * 1024,
     });
-  });
 
-  const infoServer = http.createServer((req, res) => {
-    infoHits.count += 1;
-    let body = "";
-    req.on("data", (chunk) => { body += chunk; });
-    req.on("end", () => {
-      infoHits.lastBody = JSON.parse(body || "{}");
-      infoHits.lastHeader = req.headers["x-internal-key"];
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ matched: true, text: "info reply", quickReplies: [{ title: "Main menu", payload: "MAIN_MENU" }] }));
-    });
-  });
-
-  await new Promise((resolve) => orderServer.listen(5123, "127.0.0.1", resolve));
-  await new Promise((resolve) => infoServer.listen(5124, "127.0.0.1", resolve));
-
-  const ordResult = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "ORD_DELIVERY");
-  if (ordResult?.matched !== true || orderHits.count !== 1 || infoHits.count !== 0) {
-    throw new Error("ORD payload check failed: " + JSON.stringify({ ordResult, orderHits, infoHits }));
-  }
-  if (orderHits.lastHeader !== "test-key" || orderHits.lastBody.payload !== "ORD_DELIVERY") {
-    throw new Error("ORD request header/body mismatch: " + JSON.stringify({ orderHits }));
+    if (result.status === 0) {
+      console.log(`PASS ${name}`);
+    } else {
+      failures += 1;
+      const reason = result.error?.message || result.stderr?.trim() || `child exited ${result.status}`;
+      console.log(`FAIL ${name}: ${reason.replace(/\s+/g, " ").slice(0, 500)}`);
+    }
   }
 
-  const infoResult = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "INFO_PAYMENT");
-  if (infoResult?.matched !== true || infoHits.count !== 1 || orderHits.count !== 1) {
-    throw new Error("INFO payload check failed: " + JSON.stringify({ infoResult, orderHits, infoHits }));
-  }
-
-  const unknownResult = await getMicroserviceReply("ignored", "messenger", "Sample Shop", "FOO_BAR");
-  if (unknownResult !== null || orderHits.count !== 1 || infoHits.count !== 1) {
-    throw new Error("Unknown payload check failed: " + JSON.stringify({ unknownResult, orderHits, infoHits }));
-  }
-
-  const typedResult = await getMicroserviceReply("payment and delivery", "messenger", "Sample Shop");
-  if (typedResult === null || typedResult.matched !== true) {
-    throw new Error("Typed text check failed: " + JSON.stringify({ typedResult }));
-  }
-
-  const badServer = http.createServer((req, res) => {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "upstream failure" }));
-  });
-  await new Promise((resolve) => badServer.listen(5125, "127.0.0.1", resolve));
-
-  const { getMicroserviceReply: getBadReply } = await loadModule("http://127.0.0.1:5125", "http://127.0.0.1:5125");
-  const badResult = await getBadReply("some text", "messenger", "Sample Shop");
-  if (badResult !== null) {
-    throw new Error("500 stub should be null: " + JSON.stringify({ badResult }));
-  }
-
-  await new Promise((resolve) => badServer.close(resolve));
-  await new Promise((resolve) => orderServer.close(resolve));
-  await new Promise((resolve) => infoServer.close(resolve));
   console.log("payload-routing-check ok");
-`;
-
-const result = spawnSync(process.execPath, ["--input-type=module", "-e", scenario], {
-  env: {
-    ...process.env,
-    CLIENT_URL: "http://localhost",
-    MONGO_URI: "mongodb://localhost:27017/test",
-    JWT_SECRET: "test-secret",
-    META_APP_SECRET: "test-meta-app-secret",
-    META_VERIFY_TOKEN: "test-meta-verify-token",
-    INTERNAL_SERVICE_KEY: "test-key",
-    ORDERS_SERVICE_URL: "http://127.0.0.1:5123",
-    INFO_SERVICE_URL: "http://127.0.0.1:5124/reply",
-  },
-  stdio: "inherit",
-});
-
-if (result.status !== 0) {
-  process.exit(result.status ?? 1);
+  if (failures > 0) process.exitCode = 1;
 }

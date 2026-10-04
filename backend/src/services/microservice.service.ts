@@ -89,8 +89,13 @@ async function requestMicroservice(
 
     return result.data;
   } catch (error: any) {
-    if (error?.name === "AbortError") {
-      logger.warn(`Microservice ${type} timed out or was cancelled`);
+    const abortReasonName = signal.reason?.name ?? error?.name;
+    if (abortReasonName === "TimeoutError") {
+      logger.warn(`Microservice ${type} timed out`);
+      return null;
+    }
+
+    if (abortReasonName === "AbortError") {
       return null;
     }
 
@@ -153,47 +158,49 @@ export async function getMicroserviceReply(
     return null;
   }
 
-  const orderController = new AbortController();
-  const infoController = new AbortController();
-  const orderSignal = withTimeout(orderController.signal);
-  const infoSignal = withTimeout(infoController.signal);
+  const controllers = new Map<"orders" | "info", AbortController>();
 
-  try {
-    const orderPromise = validServices.some((service) => service.type === "orders")
-      ? requestMicroservice(
-          validServices.find((service) => service.type === "orders")!.url,
-          "orders",
-          undefined,
-          text,
-          channel,
-          shopName,
-          orderSignal,
-        )
-      : Promise.resolve(null);
+  return new Promise((resolve) => {
+    let completed = 0;
+    let settled = false;
 
-    const infoPromise = validServices.some((service) => service.type === "info")
-      ? requestMicroservice(
-          validServices.find((service) => service.type === "info")!.url,
-          "info",
-          undefined,
-          text,
-          channel,
-          shopName,
-          infoSignal,
-        )
-      : Promise.resolve(null);
+    const onResult = (
+      type: "orders" | "info",
+      result: MicroserviceReply | null,
+    ) => {
+      if (settled) return;
 
-    const results = await Promise.allSettled([orderPromise, infoPromise]);
-
-    for (const result of results) {
-      if (result.status === "fulfilled" && result.value?.matched) {
-        return result.value;
+      if (result?.matched) {
+        settled = true;
+        for (const [otherType, controller] of controllers) {
+          if (otherType !== type) controller.abort();
+        }
+        resolve(result);
+        return;
       }
-    }
 
-    return null;
-  } finally {
-    orderController.abort();
-    infoController.abort();
-  }
+      completed += 1;
+      if (completed === validServices.length) {
+        settled = true;
+        resolve(null);
+      }
+    };
+
+    for (const service of validServices) {
+      const controller = new AbortController();
+      controllers.set(service.type, controller);
+      void requestMicroservice(
+        service.url,
+        service.type,
+        undefined,
+        text,
+        channel,
+        shopName,
+        withTimeout(controller.signal),
+      ).then(
+        (result) => onResult(service.type, result),
+        () => onResult(service.type, null),
+      );
+    }
+  });
 }
