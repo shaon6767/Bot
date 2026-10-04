@@ -13,7 +13,12 @@ export const messengerAdapter: ChannelAdapter = {
     for (const event of entry.messaging || []) {
       const isPostback = Boolean(event.postback);
       const quickReply = event.message?.quick_reply;
-      const text = event.message?.text ?? event.postback?.title ?? quickReply?.title ?? "";
+      const hasAttachments = Boolean(event.message?.attachments?.length);
+      const text =
+        event.message?.text ??
+        event.postback?.title ??
+        quickReply?.title ??
+        (hasAttachments ? "[attachment]" : "");
 
       if (!event.message && !isPostback) continue;
       if (event.message?.is_echo) continue;

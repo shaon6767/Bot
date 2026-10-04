@@ -72,6 +72,37 @@ export async function handleIncomingMessage(
       return;
     }
 
+    const microserviceReply = await getMicroserviceReply(
+      msg.text,
+      msg.channel,
+      business.name,
+      msg.payload,
+    );
+
+    if (microserviceReply?.matched) {
+      await sendAndLog(
+        adapter,
+        business,
+        msg,
+        microserviceReply.text ?? FALLBACK_MESSAGE,
+        "service",
+        microserviceReply.quickReplies,
+      );
+      return;
+    }
+
+    await sendAndLog(
+      adapter,
+      business,
+      msg,
+      FALLBACK_MESSAGE,
+      "fallback",
+      MAIN_QUICK_REPLIES,
+    );
+    return;
+  }
+
+  if (msg.text === "[attachment]") {
     await sendAndLog(
       adapter,
       business,
@@ -95,13 +126,14 @@ export async function handleIncomingMessage(
   }
 
   if (result.understood) {
+    const quickReplies = result.orderItems?.length ? undefined : MAIN_QUICK_REPLIES;
     await sendAndLog(
       adapter,
       business,
       msg,
       result.replyText!,
       "fast",
-      MAIN_QUICK_REPLIES,
+      quickReplies,
     );
     return;
   }
@@ -148,14 +180,12 @@ function getLocalPayloadReply(
       return { replyText: processMessage("hi", products).replyText ?? "Hi!" };
     case "ICE_BREAKER_MENU":
       return { replyText: processMessage("menu", products).replyText ?? "Menu" };
-    case "ICE_BREAKER_ORDER_INFO": {
-      const productName = products[0]?.name ?? "product";
+    case "ICE_BREAKER_ORDER_INFO":
       return {
         replyText:
-          processMessage(`order ${productName} 1`, products).replyText ??
+          processMessage("order help", products).replyText ??
           "To order, type: order <product name> <quantity>.",
       };
-    }
     case "MAIN_MENU":
       return { replyText: processMessage("menu", products).replyText ?? "Menu" };
     default:

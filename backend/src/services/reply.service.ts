@@ -20,7 +20,7 @@ function hasWord(normalized: string, words: string[]): boolean {
 }
 
 const OFF_TOPIC_PATTERNS = [
-  // Bot/AI identity — never let this reach the model
+  // Bot/AI identity — treat as off-topic.
   /\bwho (are|r) (you|u)\b/i,
   /\bwhat are you\b/i,
   /\bare you (an? )?(ai|bot|robot|human|real)\b/i,

@@ -16,6 +16,13 @@ export const MicroserviceReplySchema = z.object({
 
 export type MicroserviceReply = z.infer<typeof MicroserviceReplySchema>;
 
+function buildServiceUrl(baseUrl: string): string | null {
+  const trimmed = baseUrl.trim();
+  if (!trimmed) return null;
+  const withoutSlash = trimmed.replace(/\/+$/, "");
+  return withoutSlash.endsWith("/reply") ? withoutSlash : `${withoutSlash}/reply`;
+}
+
 function withTimeout(signal?: AbortSignal): AbortSignal {
   const requestTimeout = AbortSignal.timeout(3000);
   if (!signal) return requestTimeout;
@@ -60,6 +67,13 @@ async function requestMicroservice(
     });
 
     if (!response.ok) {
+      try {
+        if (response.body && typeof response.body.cancel === "function") {
+          await response.body.cancel();
+        }
+      } catch {
+        // ignore body-cancel errors; do not log the body or the key
+      }
       logger.warn(
         `Microservice ${type} returned non-OK status ${response.status}`,
       );
@@ -89,16 +103,52 @@ export async function getMicroserviceReply(
   text: string,
   channel: "messenger" | "instagram",
   shopName: string,
+  payload?: string,
 ): Promise<MicroserviceReply | null> {
-  const services: Array<{
-    type: "orders" | "info";
-    url?: string;
-  }> = [
+  const trimmedPayload = payload?.trim();
+
+  if (trimmedPayload) {
+    if (!trimmedPayload.startsWith("ORD_") && !trimmedPayload.startsWith("INFO_")) {
+      return null;
+    }
+
+    const serviceType = trimmedPayload.startsWith("ORD_") ? "orders" : "info";
+    const configuredUrl =
+      serviceType === "orders" ? env.ordersServiceUrl : env.infoServiceUrl;
+    const serviceUrl = configuredUrl ? buildServiceUrl(configuredUrl) : null;
+
+    if (!serviceUrl) return null;
+
+    const controller = new AbortController();
+    try {
+      return await requestMicroservice(
+        serviceUrl,
+        serviceType,
+        trimmedPayload,
+        text,
+        channel,
+        shopName,
+        withTimeout(controller.signal),
+      );
+    } finally {
+      controller.abort();
+    }
+  }
+
+  const services: Array<{ type: "orders" | "info"; url?: string }> = [
     { type: "orders", url: env.ordersServiceUrl },
     { type: "info", url: env.infoServiceUrl },
   ];
 
-  const validServices = services.filter((service) => Boolean(service.url));
+  const validServices = services
+    .map((service) => ({
+      ...service,
+      url: buildServiceUrl(service.url ?? ""),
+    }))
+    .filter((service): service is { type: "orders" | "info"; url: string } =>
+      Boolean(service.url),
+    );
+
   if (validServices.length === 0) {
     return null;
   }
@@ -111,7 +161,7 @@ export async function getMicroserviceReply(
   try {
     const orderPromise = validServices.some((service) => service.type === "orders")
       ? requestMicroservice(
-          env.ordersServiceUrl!,
+          validServices.find((service) => service.type === "orders")!.url,
           "orders",
           undefined,
           text,
@@ -123,7 +173,7 @@ export async function getMicroserviceReply(
 
     const infoPromise = validServices.some((service) => service.type === "info")
       ? requestMicroservice(
-          env.infoServiceUrl!,
+          validServices.find((service) => service.type === "info")!.url,
           "info",
           undefined,
           text,
@@ -133,23 +183,12 @@ export async function getMicroserviceReply(
         )
       : Promise.resolve(null);
 
-    const first = await Promise.race([
-      orderPromise.then((result) => ({ source: "orders", result })),
-      infoPromise.then((result) => ({ source: "info", result })),
-    ]);
+    const results = await Promise.allSettled([orderPromise, infoPromise]);
 
-    if (first.result?.matched) {
-      if (first.source === "orders") {
-        infoController.abort();
-      } else {
-        orderController.abort();
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value?.matched) {
+        return result.value;
       }
-      return first.result;
-    }
-
-    const secondResult = await (first.source === "orders" ? infoPromise : orderPromise);
-    if (secondResult?.matched) {
-      return secondResult;
     }
 
     return null;
