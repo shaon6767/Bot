@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Chat Commerce
 
-## Getting Started
+Chat Commerce helps small businesses manage their product catalog and orders while automating customer conversations on Meta messaging channels.
 
-First, run the development server:
+## Try the public demo
+
+The dashboard homepage introduces the app. Select **Try the demo** to explore a simulated chat without signing in:
+
+- Browse sample products with `menu` or the **Products** quick reply.
+- Ask about delivery, payment, contact, order tracking, or returns.
+- Try a sample order such as `order canvas tote 2`.
+- Switch between Messenger and Instagram previews or reset the conversation.
+
+The demo is a frontend-only simulation. It does not send messages through Meta, access a business account, or create real orders. The sample shop, products, and answers are illustrative.
+
+## Screenshots
+
+| Public landing page | Interactive chatbot demo |
+| --- | --- |
+| ![Chat Commerce landing page](./public/screenshots/landing.png) | ![Interactive chatbot demo](./public/screenshots/demo.png) |
+
+## Run locally
+
+Requirements: Node.js and npm.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000), then visit `/demo` to try the chat or `/login` to open the admin sign-in page.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The public landing page and chatbot demo work without the backend. Admin features require the backend API, a configured MongoDB database, and the environment variables described in the backend setup. The dashboard uses `NEXT_PUBLIC_API_URL` for the API origin and defaults to `http://localhost:5000`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Dashboard features
 
-## Learn More
+- Manage products in the catalog.
+- Review and update incoming orders.
+- Configure chatbot settings.
+- Register or sign in to a business dashboard.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js App Router, React, and TypeScript
+- Tailwind CSS
+- Express, MongoDB, and Mongoose backend
+- Messenger and Instagram webhook adapters
+- Separate order and information reply services

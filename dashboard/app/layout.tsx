@@ -22,8 +22,9 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chat Commerce Dashboard",
-  description: "Manage products and orders",
+  title: "Chat Commerce | Social shopping, made simpler",
+  description:
+    "Help customers discover products and place orders through Messenger and Instagram. Try the interactive demo.",
 };
 
 export default function RootLayout({
