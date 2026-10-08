@@ -6,11 +6,11 @@ Chat Commerce is a product and order dashboard for small businesses that sell th
 
 **Landing page**
 
-![Chat Commerce landing page](./public/screenshots/landing.png)
+![Chat Commerce landing page](./dashboard/public/screenshots/landing.png)
 
 **Interactive demo**
 
-![Chat Commerce interactive demo](./public/screenshots/demo.png)
+![Chat Commerce interactive demo](./dashboard/public/screenshots/demo.png)
 
 ## Features
 
